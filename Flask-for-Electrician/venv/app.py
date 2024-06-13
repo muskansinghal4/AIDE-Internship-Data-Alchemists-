@@ -39,5 +39,6 @@ def homepage():
         print("Error fetching major categories:", e)
         return "Error fetching major categories"
 
+
 if __name__ == '__main__':
     app.run(debug=True)
