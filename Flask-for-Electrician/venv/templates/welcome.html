@@ -1,0 +1,20 @@
+<!-- templates/welcome.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome Page</title>
+</head>
+<body>
+    <h2>Welcome Page</h2>
+    <form action="/welcome" method="POST">
+        <label for="city">Enter your city:</label><br>
+        <input type="text" id="city" name="city"><br><br>
+        <input type="submit" value="Submit">
+    </form>
+    {% if message %}
+    <p>{{ message }}</p>
+    {% endif %}
+</body>
+</html>
