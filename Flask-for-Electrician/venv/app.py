@@ -1,7 +1,7 @@
 from flask import Flask, render_template,request, jsonify
 import mysql.connector
 import json
-
+import datetime
 app = Flask(__name__)
 
 # MySQL configuration
@@ -12,10 +12,11 @@ mysql_config = {
     'database': 'group-project-1',
     # 'autocommit': True  # Ensure autocommit is set to True
 }
-
+print("Am i even running")
 # @app.route('/')
 @app.route('/homepage')
 def homepage():
+    print("Well it seems i am also running")
     try:
         # Connect to MySQL database
         conn = mysql.connector.connect(**mysql_config)
@@ -47,6 +48,7 @@ if __name__ == '__main__':
 @app.route('/')
 @app.route('/bookings')
 def booking():
+
     # function call to check if user has signed in or not
     #if signed in then
     #fetch user details from the users table
@@ -63,7 +65,6 @@ def booking():
     #     selected_service_ids = []
         # return "some error occurred"
 
-
     if user_id is not None and selected_services:
         try:
             conn = mysql.connector.connect(**mysql_config)
@@ -79,14 +80,14 @@ def booking():
             bill_details = {
                 'name': user_details['user_name'],
                 'email': user_details['user_email'],
-                'services': []
+                'services': [],
+                'total_amount':0
             }
-
-            # Fetch selected services details
+            total_amount=0
+            total_duration = 0
             for service_id in selected_services:
                 cursor.execute("SELECT service_name, price, service_duration, warranty_id, package_id FROM service_table WHERE service_id = %s", (service_id,))
                 service_details = cursor.fetchone()
-
                 if service_details:
                     if service_details['service_name'].lower() == 'package' and 'package_id' in service_details:
                         cursor.execute("SELECT package_name FROM package_table WHERE package_id = %s", (service_details['package_id'],))
@@ -106,14 +107,32 @@ def booking():
                     }
 
                     bill_details['services'].append(service_entry)
+                    total_duration += service_details['service_duration']
+                    total_amount += service_details['price']  # Accumulate total price
+
+            bill_details['total_amount'] = total_amount  # Assign total_amount to bill_details
+            print(total_amount)
+            # Generate slot options based on total duration
+            slot_options = []
+            for hour in range(9, 22):  # Slots from 9 AM to 9 PM (assuming 24-hour format)
+                slot_options.append(f"{hour}:00 - {hour+1}:00")
+
+            # Generate date options for the next 3 days
+            date_options = []
+            today = datetime.date.today()
+            for i in range(3):
+                date = today + datetime.timedelta(days=i+1)
+                date_options.append(date.strftime("%d %B"))  # Format date as "15 June"
+
             # Fetch cities available for service
             cursor.execute("SELECT DISTINCT available_for_cities FROM technician_table")
             cities_list = [row['available_for_cities'] for row in cursor.fetchall()]
 
             cursor.close()
             conn.close()
-            print("Booking function execution end")
-            return render_template('booking.html', bill=bill_details, cities_list=cities_list, selected_services=json.dumps(selected_services))
+
+            return render_template('booking.html', bill=bill_details, cities_list=cities_list, selected_services=json.dumps(selected_services),
+                                   slot_options=slot_options, date_options=date_options)
 
         except Exception as e:
             print("Error fetching details:", e)
@@ -130,19 +149,54 @@ def confirm_booking():
     if request.method == 'POST':
         address = request.form.get('address')
         slot = request.form.get('slot')
+        date = request.form.get('date')  # Add date variable to fetch selected date
         name = request.form.get('name')
         email = request.form.get('email')
         selected_services = json.loads(request.form.get('selected_services'))
+        upi_ref_no = request.form.get('upi_ref_no')
+        total_amount = request.form.get('total_bill')
 
-        bill_details = {
-            'name': name,
-            'email': email,
-            'services': []
-        }
+
 
         try:
             conn = mysql.connector.connect(**mysql_config)
             cursor = conn.cursor(dictionary=True)
+
+            # Fetch total price of selected services
+            total_price = 0
+            for service_id in selected_services:
+                cursor.execute("SELECT price FROM service_table WHERE service_id = %s", (service_id,))
+                service_details = cursor.fetchone()
+                if service_details:
+                    total_price += service_details['price']
+
+            # Check UPI reference number in the payments_table
+            cursor.execute("SELECT amount, consumed FROM payments_table WHERE UPI_Ref_No = %s", (upi_ref_no,))
+            payment_details = cursor.fetchone()
+
+            if not payment_details:
+                return "Error: Invalid UPI reference number."
+
+            if payment_details['amount'] != total_price:
+                return "Error: Payment amount does not match the total bill amount. If the payment was successful then contact our helpdesk to proceed with the payment correction process."
+
+            if payment_details['consumed'] == 1:
+                return "Error: UPI reference number has already been used. Please enter the UPI reference number of the current booking."
+
+            # Update the payment record to mark it as consumed
+            cursor.execute("UPDATE payments_table SET consumed = 1 WHERE UPI_Ref_No = %s", (upi_ref_no,))
+            conn.commit()
+
+            # Fetch service details and user information as before
+            bill_details = {
+                'name': name,
+                'email': email,
+                'services': [],
+                'address': address,
+                'slot': slot,
+                'date': date,  # Add the selected date to bill details
+                'total_bill':total_amount
+            }
 
             for service_id in selected_services:
                 cursor.execute("SELECT service_name, price, service_duration, warranty_id, package_id FROM service_table WHERE service_id = %s", (service_id,))
@@ -171,12 +225,16 @@ def confirm_booking():
             cursor.close()
             conn.close()
 
-            return render_template('bill.html', bill=bill_details, address=address, slot=slot)
+            return render_template('bill.html', bill=bill_details)
+
         except Exception as e:
             print("Error fetching details:", e)
-            return "Error fetching details"
+            return "Error fetching details", 500
+
     else:
-        return "Method not allowed"
+        return "Method not allowed", 405
+
+
 
 if __name__ == '__main__':
     app.run(debug=True)

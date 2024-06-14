@@ -23,8 +23,15 @@
         var selectedServices = {{ selected_services | safe }};
         
         function updateDetails() {
+            // Update service address
             document.getElementById('display-address').innerText = document.getElementById('address').value;
-            document.getElementById('display-slot').innerText = document.getElementById('slot').value;
+
+            // Update selected date and slot
+            var selectedDate = document.querySelector('input[name="date"]:checked').value;
+            var selectedSlot = document.querySelector('input[name="slot"]:checked').value;
+            document.getElementById('display-date').innerText = selectedDate;
+            document.getElementById('display-slot').innerText = selectedSlot;
+
         }
     
         function validateAddress() {
@@ -51,8 +58,26 @@
                     <input type="text" class="form-control" id="address" name="address" required>
                 </div>
                 <div class="form-group">
-                    <label for="slot">Preferred Service Slot:</label>
-                    <input type="text" class="form-control" id="slot" name="slot" required>
+                    <label>Select Service Date:</label><br>
+                    {% for date in date_options %}
+                    <label>
+                        <input type="radio" name="date" value="{{ date }}" required>
+                        {{ date }}
+                    </label><br>
+                    {% endfor %}
+                </div>
+                <div class="form-group">
+                    <label>Select Service Slot:</label><br>
+                    {% for slot in slot_options %}
+                    <label>
+                        <input type="radio" name="slot" value="{{ slot }}" required>
+                        {{ slot }}
+                    </label><br>
+                    {% endfor %}
+                </div>
+                <div class="form-group">
+                    <label for="upi_ref_no">UPI Reference Number:</label>
+                    <input type="text" class="form-control" id="upi_ref_no" name="upi_ref_no" required>
                 </div>
                 <div class="form-group">
                     <label for="payment">Payment</label>
@@ -61,9 +86,10 @@
                 <input type="hidden" name="selected_services" value="{{ selected_services }}">
                 <input type="hidden" name="name" value="{{ bill.name }}">
                 <input type="hidden" name="email" value="{{ bill.email }}">
+                <input type="hidden" name="total_bill" value="{{ bill.total_amount }}">
                 <button type="submit" class="btn btn-primary">Confirm Booking</button>
             </form>
-        </div>
+        </div>        
         <div class="right">
             <h1 class="text-center">Booking Details</h1>
             <div class="card mt-4">
@@ -94,7 +120,7 @@
                                 {% for service in bill.services %}
                                     <tr>
                                         <td>{{ service.name }}</td>
-                                        <td>{{ service.price }}</td>
+                                        <td id="service_price_{{ service.id }}">{{ service.price }}</td>
                                         <td>{{ service.duration }}</td>
                                         <td>{{ service.warranty_id }}</td>
                                     </tr>
@@ -108,11 +134,13 @@
             </div>
             <div class="card mt-4">
                 <div class="card-header">
-                    <h2>Preferred Slot and Address</h2>
+                    <h2>Booking Details</h2>
                 </div>
                 <div class="card-body">
+                    <p><strong>Selected Date:</strong> <span id="display-date"></span></p>
                     <p><strong>Preferred Slot:</strong> <span id="display-slot"></span></p>
                     <p><strong>Service Address:</strong> <span id="display-address"></span></p>
+                    <p><strong>Total Bill:</strong> Rs. <span id="total_bill">{{ bill.total_amount }}</span></p>
                 </div>
             </div>
         </div>
