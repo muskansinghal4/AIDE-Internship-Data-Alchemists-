@@ -62,6 +62,7 @@ oauth.register(
     }
 )
 
+print("making sure eveythign works fine")
 @app.route('/login')
 def login():
     redirect_uri = url_for('auth', _external=True)
