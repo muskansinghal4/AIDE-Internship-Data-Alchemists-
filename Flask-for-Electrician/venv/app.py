@@ -43,54 +43,103 @@ def homepage():
 if __name__ == '__main__':
     app.run(debug=True)
 
+varforrouteauth=''
+
+from flask import url_for, session,redirect
+from authlib.integrations.flask_client import OAuth
+
+
+app.secret_key = '!secret'
+app.config.from_object('config')
+# Google OAuth configuration
+CONF_URL = 'https://accounts.google.com/.well-known/openid-configuration'
+oauth = OAuth(app)
+oauth.register(
+    name='google',
+    server_metadata_url=CONF_URL,
+    client_kwargs={
+        'scope': 'openid email profile'
+    }
+)
+
+@app.route('/login')
+def login():
+    redirect_uri = url_for('auth', _external=True)
+    return oauth.google.authorize_redirect(redirect_uri)
+
+@app.route('/auth')
+def auth():
+    token = oauth.google.authorize_access_token()
+    session['user'] = token['userinfo']
+    print("user authorized")
+    return redirect(varforrouteauth)
+
+@app.route('/logout')
+def logout():
+    session.pop('user', None)
+    return redirect('/')
 
 
 @app.route('/')
 @app.route('/bookings')
 def booking():
 
-    # function call to check if user has signed in or not
-    #if signed in then
-    #fetch user details from the users table
-    user_id = request.args.get('user_id', default=None, type=int)
-    print(user_id)
-    user_id=111111111
-
+    user = session.get('user')
+    if not user:
+        global varforrouteauth
+        varforrouteauth='/bookings'
+        return redirect(url_for('login'))
+    print(user)
     selected_services=[1111,1138,1151,1205]
-    #CODE MUST BE ADDED
-    # selected_services_response=requests.get('http://localhost:5000/selected_services')
-    # if selected_services_response.status_code == 200:
-    #     selected_service_ids=selected_services_response.json().get('service_ids', [])
-    # else:
-    #     selected_service_ids = []
-        # return "some error occurred"
+    user_email=user['email']
+    user_name=user['name']
+    try:
+        conn = mysql.connector.connect(**mysql_config)
+        cursor = conn.cursor(dictionary=True)
 
-    if user_id is not None and selected_services:
-        try:
-            conn = mysql.connector.connect(**mysql_config)
-            cursor = conn.cursor(dictionary=True)
+        # Check if the user exists
+        cursor.execute("SELECT user_id FROM users_table WHERE user_email = %s", (user_email,))
+        user_row = cursor.fetchone()
 
+        if user_row:
+            user_id = user_row['user_id']
+        else:
+            # Insert new user into the users_table
+            cursor.execute(
+                "INSERT INTO users_table (user_name, user_email) VALUES (%s, %s)",
+                (user_name, user_email)
+            )
+            conn.commit()  # Commit the transaction to get the new user_id
+            user_id = cursor.lastrowid
+
+        if user_id is not None and selected_services:
             # Fetch user details
             cursor.execute("SELECT user_name, user_email FROM users_table WHERE user_id = %s", (user_id,))
             user_details = cursor.fetchone()
 
             if not user_details:
                 return "Error: User not found"
-            
+
             bill_details = {
                 'name': user_details['user_name'],
                 'email': user_details['user_email'],
                 'services': [],
-                'total_amount':0
+                'total_amount': 0
             }
-            total_amount=0
+            total_amount = 0
             total_duration = 0
             for service_id in selected_services:
-                cursor.execute("SELECT service_name, price, service_duration, warranty_id, package_id FROM service_table WHERE service_id = %s", (service_id,))
+                cursor.execute(
+                    "SELECT service_name, price, service_duration, warranty_id, package_id FROM service_table WHERE service_id = %s",
+                    (service_id,)
+                )
                 service_details = cursor.fetchone()
                 if service_details:
                     if service_details['service_name'].lower() == 'package' and 'package_id' in service_details:
-                        cursor.execute("SELECT package_name FROM package_table WHERE package_id = %s", (service_details['package_id'],))
+                        cursor.execute(
+                            "SELECT package_name FROM package_table WHERE package_id = %s",
+                            (service_details['package_id'],)
+                        )
                         package_details = cursor.fetchone()
                         if package_details:
                             service_name = package_details['package_name']
@@ -134,14 +183,15 @@ def booking():
             return render_template('booking.html', bill=bill_details, cities_list=cities_list, selected_services=json.dumps(selected_services),
                                    slot_options=slot_options, date_options=date_options)
 
-        except Exception as e:
-            print("Error fetching details:", e)
-            return "Error fetching details"
-    else:
-        return """
-        <h1>Welcome!</h1>
-        <p>Please <a href="/signin">sign in</a> or <a href="/signup">sign up</a> to continue.</p>
-        """
+        else:
+            return """
+            <h1>Welcome!</h1>
+            <p>Please <a href="/signin">sign in</a> or <a href="/signup">sign up</a> to continue.</p>
+            """
+
+    except Exception as e:
+        print("Error fetching details:", e)
+        return "Error fetching details"
 
 
 @app.route('/confirm_booking', methods=['POST'])
