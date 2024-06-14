@@ -12,93 +12,6 @@ mysql_config = {
     'database': 'group-project-1',
     # 'autocommit': True  # Ensure autocommit is set to True
 }
-print("Am i even running")
-# @app.route('/')
-@app.route('/homepage')
-def homepage():
-    print("Well it seems i am also running")
-    try:
-        # Connect to MySQL database
-        conn = mysql.connector.connect(**mysql_config)
-        cursor = conn.cursor(dictionary=True)
-
-        # Fetch major categories
-        cursor.execute("SELECT mc_id, mc_name FROM major_category_table")
-        major_categories = cursor.fetchall()
-
-        # Iterate through major categories and fetch their subcategories
-        for category in major_categories:
-            cursor.execute("SELECT sc_name FROM sub_category_table WHERE mc_id = %s", (category['mc_id'],))
-            subcategories = cursor.fetchall()
-            category['subcategories'] = subcategories
-
-        cursor.close()
-        conn.close()
-
-        return render_template('homepage.html', major_categories=major_categories)
-    
-    except Exception as e:
-        print("Error fetching major categories:", e)
-        return "Error fetching major categories"
-    
-
-
-
-
-
-class segment_model:
-    def __init__(self):
-        try:
-            self.conn = mysql.connector.connect(**mysql_config)
-            self.cursor = self.conn.cursor(dictionary=True)
-            print("Connection successfull in subcategory page")
-        except Exception as e:
-            print("Error fetching sub categories:", e)
-    
-    def show_segments(self,sc_id):
-        try:
-            self.cursor.execute("SELECT segmentation_type_id, segmentation_type_name FROM segmentation_table WHERE sc_id = %s", (sc_id,))
-            segments = self.cursor.fetchall()
-            print("YES I FETCHED SEGMENT")
-            return segments
-    
-        except Exception as e:
-            print("Error fetching segments:", e)
-            return "Error fetching segments"
-    
-    def show_packages(self, sc_id):
-        try:
-            # Fetch packages for the given subcategory
-            self.cursor.execute("SELECT package_id, package_name, package_front_description,segmentation_type_id FROM package_table WHERE sc_id = %s", (sc_id,))
-            packages = self.cursor.fetchall()
-            print("YES I FETCHED PACKAGES")
-            return packages
-        except Exception as err:
-            print("Error fetching packages:", err)
-            return "error"
-        
-    def show_services(self, package_id):
-        try:
-            # Fetch services for the given package
-            self.cursor.execute("SELECT * FROM service_table WHERE package_id = %s", (package_id,))
-            services = self.cursor.fetchall()
-            print("YES I SHOWED SERVICES")
-            return services
-        except Exception  as err:
-            print("Error fetching services:", err)
-            return "error in fetching services"
-obj=segment_model()
-@app.route("/segment/<sc_id>")
-def show_segments(sc_id):
-    # Fetch subcategories from the model
-    segments = obj.show_segments(sc_id)
-    packages=obj.show_packages(sc_id)
-    print("YES I CAME TO SEGMENT CONTROLLER")
-    # Render the template with the fetched subcategories
-    for package in packages:
-        package_id = package['package_id']
-        package["services"] = obj.show_services(package_id)
-    return render_template('segment.html', segments=segments, packages=packages)
 
 
 
@@ -106,13 +19,6 @@ def show_segments(sc_id):
 
 
 
-
-
-
-
-
-if __name__ == '__main__':
-    app.run(debug=True)
 
 varforrouteauth=''
 
@@ -151,7 +57,154 @@ def logout():
     return redirect('/')
 
 
+
+
+
+
+
+
+
+
+
+
+print("Am i even running")
 @app.route('/')
+@app.route('/homepage')
+def homepage():
+    user = session.get('user')
+    if not user:
+        global varforrouteauth
+        varforrouteauth='/homepage'
+        return redirect(url_for('login'))
+    try:
+        # Connect to MySQL database
+        conn = mysql.connector.connect(**mysql_config)
+        cursor = conn.cursor(dictionary=True)
+        print("Connection successfull in homepage")
+        # Fetch major categories
+        cursor.execute("SELECT mc_id, mc_name FROM major_category_table")
+        major_categories = cursor.fetchall()
+
+        # Iterate through major categories and fetch their subcategories
+        for category in major_categories:
+            cursor.execute("SELECT sc_id, sc_name FROM sub_category_table WHERE mc_id = %s", (category['mc_id'],))
+            subcategories = cursor.fetchall()
+            category['subcategories'] = subcategories
+
+        cursor.close()
+        conn.close()
+
+        return render_template('homepage.html', major_categories=major_categories)
+    
+    except Exception as e:
+        print("connection error in homepage function")
+        print("Error fetching major categories:", e)
+        return "Error fetching major categories"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+class segment_model:
+    def __init__(self):
+        try:
+            self.conn = mysql.connector.connect(**mysql_config)
+            self.cursor = self.conn.cursor(dictionary=True)
+            print("Connection successfull in subcategory page")
+        except Exception as e:
+            print("connection problem in subcategory page")
+            print("Error fetching sub categories:", e)
+    
+    def show_segments(self,sc_id):
+        try:
+            self.cursor.execute("SELECT segmentation_type_id, segmentation_type_name FROM segmentation_table WHERE sc_id = %s", (sc_id,))
+            segments = self.cursor.fetchall()
+            return segments
+    
+        except Exception as e:
+            print("Error fetching segments:", e)
+            return "Error fetching segments"
+    
+    def show_packages(self, sc_id):
+        try:
+            # Fetch packages for the given subcategory
+            self.cursor.execute("SELECT package_id, package_name, package_front_description,segmentation_type_id FROM package_table WHERE sc_id = %s", (sc_id,))
+            packages = self.cursor.fetchall()
+            return packages
+        except Exception as err:
+            print("Error fetching packages:", err)
+            return "error"
+        
+    def show_services(self, package_id):
+        try:
+            # Fetch services for the given package
+            self.cursor.execute("SELECT * FROM service_table WHERE package_id = %s", (package_id,))
+            services = self.cursor.fetchall()
+            return services
+        except Exception  as err:
+            print("Error fetching services:", err)
+            return "error in fetching services"
+obj=segment_model()
+@app.route("/segment/<sc_id>")
+def show_segments(sc_id):
+    user = session.get('user')
+    if not user:
+        global varforrouteauth
+        varforrouteauth=f"'/segment/'{sc_id}"
+        return redirect(url_for('login'))
+    # Fetch subcategories from the model
+    segments = obj.show_segments(sc_id)
+    packages=obj.show_packages(sc_id)
+    # Render the template with the fetched subcategories
+    for package in packages:
+        package_id = package['package_id']
+        package["services"] = obj.show_services(package_id)
+    return render_template('segment.html', segments=segments, packages=packages)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+if __name__ == '__main__':
+    app.run(debug=True)
+
+
+# @app.route('/')
 @app.route('/bookings')
 def booking():
 
@@ -167,7 +220,7 @@ def booking():
     try:
         conn = mysql.connector.connect(**mysql_config)
         cursor = conn.cursor(dictionary=True)
-
+        print("connection successfull in bookings")
         # Check if the user exists
         cursor.execute("SELECT user_id FROM users_table WHERE user_email = %s", (user_email,))
         user_row = cursor.fetchone()
@@ -270,6 +323,7 @@ def booking():
             """
 
     except Exception as e:
+        print("connection problem in bookings page")
         print("Error fetching details:", e)
         return "Error fetching details"
 
@@ -292,7 +346,7 @@ def confirm_booking():
         try:
             conn = mysql.connector.connect(**mysql_config)
             cursor = conn.cursor(dictionary=True)
-
+            print("connection successfull in confirm bookings/ bill page")
             # Fetch total price of selected services
             total_price = 0
             for service_id in selected_services:
@@ -361,6 +415,7 @@ def confirm_booking():
             return render_template('bill.html', bill=bill_details)
 
         except Exception as e:
+            print("connection problem in confirm booking/bill page")
             print("Error fetching details:", e)
             return "Error fetching details", 500
 

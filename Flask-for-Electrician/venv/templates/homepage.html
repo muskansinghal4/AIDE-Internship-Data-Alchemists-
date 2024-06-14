@@ -21,7 +21,9 @@
                         {{ category['mc_name'] }}
                         <ul class="subcategory-list">
                             {% for subcategory in category['subcategories'] %}
-                                <li>{{ subcategory['sc_name'] }}</li>
+                                <li>
+                                    <a href="/segment/{{ subcategory['sc_id'] }}">{{ subcategory['sc_name'] }}</a>
+                                </li>
                             {% endfor %}
                         </ul>
                     </li>
