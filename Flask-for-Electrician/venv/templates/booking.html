@@ -18,35 +18,43 @@
             margin-left: 40px;
         }
     </style>
-    <script>
-        var cities = {{ cities_list | tojson }};
-        var selectedServices = {{ selected_services | safe }};
-        
-        function updateDetails() {
-            // Update service address
-            document.getElementById('display-address').innerText = document.getElementById('address').value;
+    <!-- Add the JavaScript part here -->
+<script>
+    var cities = {{ cities_list | tojson }};
+    var selectedServices = {{ selected_services | safe }};
+    var totalMinutes = {{ bill.total_minutes }};
 
-            // Update selected date and slot
-            var selectedDate = document.querySelector('input[name="date"]:checked').value;
-            var selectedSlot = document.querySelector('input[name="slot"]:checked').value;
-            document.getElementById('display-date').innerText = selectedDate;
-            document.getElementById('display-slot').innerText = selectedSlot;
+    function updateDetails() {
+        // Update service address
+        document.getElementById('display-address').innerText = document.getElementById('address').value;
 
-        }
-    
-        function validateAddress() {
-            var address = document.getElementById('address').value.toLowerCase();
-    
-            for (var i = 0; i < cities.length; i++) {
-                if (address.includes(cities[i].toLowerCase())) {
-                    return true;  // Valid address
-                }
+        // Update selected date and slot
+        var selectedDate = document.querySelector('input[name="date"]:checked').value;
+        var selectedSlot = document.querySelector('input[name="slot"]:checked').value.split(' - ')[0];
+        var slotHour = parseInt(selectedSlot.split(':')[0]);
+
+        var endSlotHour = slotHour + Math.ceil(totalMinutes / 60);
+        var endSlot = endSlotHour + ":00";
+
+        var displaySlot = selectedSlot + " - " + endSlot;
+        document.getElementById('display-slot').innerText = displaySlot;
+        document.getElementById('preferred-slot').value = displaySlot;
+    }
+
+    function validateAddress() {
+        var address = document.getElementById('address').value.toLowerCase();
+
+        for (var i = 0; i < cities.length; i++) {
+            if (address.includes(cities[i].toLowerCase())) {
+                return true;  // Valid address
             }
-    
-            alert("Please enter a valid address within our service area.");
-            return false;  // Invalid address
         }
-    </script>
+
+        alert("Please enter a valid address within our service area.");
+        return false;  // Invalid address
+    }
+</script>
+
 </head>
 <body>
     <div class="container mt-5">
@@ -88,6 +96,7 @@
                 <input type="hidden" name="email" value="{{ bill.email }}">
                 <input type="hidden" name="total_bill" value="{{ bill.total_amount }}">
                 <input type="hidden" name="total_duration" value="{{ bill.total_duration }}">
+                <input type="hidden" name="preferred_slot" id="preferred-slot">
                 <button type="submit" class="btn btn-primary">Confirm Booking</button>
             </form>
         </div>        

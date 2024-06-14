@@ -68,7 +68,7 @@ def logout():
 
 
 print("Am i even running")
-@app.route('/')
+# @app.route('/')
 @app.route('/homepage')
 def homepage():
     user = session.get('user')
@@ -204,7 +204,7 @@ if __name__ == '__main__':
     app.run(debug=True)
 
 
-# @app.route('/')
+@app.route('/')
 @app.route('/bookings')
 def booking():
 
@@ -214,7 +214,7 @@ def booking():
         varforrouteauth='/bookings'
         return redirect(url_for('login'))
     # print(user)
-    selected_services=[1111,1138,1205]
+    selected_services=[1111,1138,1205,1206]
     user_email=user['email']
     user_name=user['name']
     try:
@@ -291,12 +291,13 @@ def booking():
                 total_duration = f"{hours} hour{'s' if hours > 1 else ''}"
             else:
                 total_duration = f"{minutes} minute{'s' if minutes > 1 else ''}"
+            bill_details['total_minutes']=total_minutes
             bill_details['total_duration'] = total_duration      
             bill_details['total_amount'] = total_amount  # Assign total_amount to bill_details
             print(total_amount)
             # Generate slot options based on total duration
             slot_options = []
-            for hour in range(9, 22):  # Slots from 9 AM to 9 PM (assuming 24-hour format)
+            for hour in range(9, 21):  # Slots from 9 AM to 9 PM (assuming 24-hour format)
                 slot_options.append(f"{hour}:00 - {hour+1}:00")
 
             # Generate date options for the next 3 days
