@@ -87,6 +87,7 @@
                 <input type="hidden" name="name" value="{{ bill.name }}">
                 <input type="hidden" name="email" value="{{ bill.email }}">
                 <input type="hidden" name="total_bill" value="{{ bill.total_amount }}">
+                <input type="hidden" name="total_duration" value="{{ bill.total_duration }}">
                 <button type="submit" class="btn btn-primary">Confirm Booking</button>
             </form>
         </div>        
@@ -139,8 +140,9 @@
                 <div class="card-body">
                     <p><strong>Selected Date:</strong> <span id="display-date"></span></p>
                     <p><strong>Preferred Slot:</strong> <span id="display-slot"></span></p>
+                    <p><strong>Total Duration: </strong><span id="total_duration">{{ bill.total_duration }}</span></p>
                     <p><strong>Service Address:</strong> <span id="display-address"></span></p>
-                    <p><strong>Total Bill:</strong> Rs. <span id="total_bill">{{ bill.total_amount }}</span></p>
+                    <p><strong>Total Bill:</strong> Rs.<span id="total_bill">{{ bill.total_amount }}</span></p>
                 </div>
             </div>
         </div>

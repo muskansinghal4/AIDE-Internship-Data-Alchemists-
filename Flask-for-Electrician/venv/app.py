@@ -40,6 +40,77 @@ def homepage():
     except Exception as e:
         print("Error fetching major categories:", e)
         return "Error fetching major categories"
+    
+
+
+
+
+
+class segment_model:
+    def __init__(self):
+        try:
+            self.conn = mysql.connector.connect(**mysql_config)
+            self.cursor = self.conn.cursor(dictionary=True)
+            print("Connection successfull in subcategory page")
+        except Exception as e:
+            print("Error fetching sub categories:", e)
+    
+    def show_segments(self,sc_id):
+        try:
+            self.cursor.execute("SELECT segmentation_type_id, segmentation_type_name FROM segmentation_table WHERE sc_id = %s", (sc_id,))
+            segments = self.cursor.fetchall()
+            print("YES I FETCHED SEGMENT")
+            return segments
+    
+        except Exception as e:
+            print("Error fetching segments:", e)
+            return "Error fetching segments"
+    
+    def show_packages(self, sc_id):
+        try:
+            # Fetch packages for the given subcategory
+            self.cursor.execute("SELECT package_id, package_name, package_front_description,segmentation_type_id FROM package_table WHERE sc_id = %s", (sc_id,))
+            packages = self.cursor.fetchall()
+            print("YES I FETCHED PACKAGES")
+            return packages
+        except Exception as err:
+            print("Error fetching packages:", err)
+            return "error"
+        
+    def show_services(self, package_id):
+        try:
+            # Fetch services for the given package
+            self.cursor.execute("SELECT * FROM service_table WHERE package_id = %s", (package_id,))
+            services = self.cursor.fetchall()
+            print("YES I SHOWED SERVICES")
+            return services
+        except Exception  as err:
+            print("Error fetching services:", err)
+            return "error in fetching services"
+obj=segment_model()
+@app.route("/segment/<sc_id>")
+def show_segments(sc_id):
+    # Fetch subcategories from the model
+    segments = obj.show_segments(sc_id)
+    packages=obj.show_packages(sc_id)
+    print("YES I CAME TO SEGMENT CONTROLLER")
+    # Render the template with the fetched subcategories
+    for package in packages:
+        package_id = package['package_id']
+        package["services"] = obj.show_services(package_id)
+    return render_template('segment.html', segments=segments, packages=packages)
+
+
+
+
+
+
+
+
+
+
+
+
 if __name__ == '__main__':
     app.run(debug=True)
 
@@ -89,8 +160,8 @@ def booking():
         global varforrouteauth
         varforrouteauth='/bookings'
         return redirect(url_for('login'))
-    print(user)
-    selected_services=[1111,1138,1151,1205]
+    # print(user)
+    selected_services=[1111,1138,1205]
     user_email=user['email']
     user_name=user['name']
     try:
@@ -127,7 +198,8 @@ def booking():
                 'total_amount': 0
             }
             total_amount = 0
-            total_duration = 0
+            total_duration=0
+            total_minutes=0
             for service_id in selected_services:
                 cursor.execute(
                     "SELECT service_name, price, service_duration, warranty_id, package_id FROM service_table WHERE service_id = %s",
@@ -156,9 +228,17 @@ def booking():
                     }
 
                     bill_details['services'].append(service_entry)
-                    total_duration += service_details['service_duration']
+                    total_minutes += service_details['service_duration']
                     total_amount += service_details['price']  # Accumulate total price
-
+            hours = total_minutes // 60
+            minutes = total_minutes % 60
+            if hours > 0 and minutes > 0:
+                total_duration = f"{hours} hour{'s' if hours > 1 else ''} {minutes} minute{'s' if minutes > 1 else ''}"
+            elif hours > 0:
+                total_duration = f"{hours} hour{'s' if hours > 1 else ''}"
+            else:
+                total_duration = f"{minutes} minute{'s' if minutes > 1 else ''}"
+            bill_details['total_duration'] = total_duration      
             bill_details['total_amount'] = total_amount  # Assign total_amount to bill_details
             print(total_amount)
             # Generate slot options based on total duration
@@ -205,8 +285,9 @@ def confirm_booking():
         selected_services = json.loads(request.form.get('selected_services'))
         upi_ref_no = request.form.get('upi_ref_no')
         total_amount = request.form.get('total_bill')
-
-
+        total_duration=request.form.get('total_duration')
+        print("TOTAL DURATION FETCHED:",total_duration)
+        allowed_upi_refs = [2147483647]
 
         try:
             conn = mysql.connector.connect(**mysql_config)
@@ -219,19 +300,20 @@ def confirm_booking():
                 service_details = cursor.fetchone()
                 if service_details:
                     total_price += service_details['price']
+            # Check if UPI reference number is in the allowed list
+            if int(upi_ref_no) not in allowed_upi_refs:
+                # Check UPI reference number in the payments_table
+                cursor.execute("SELECT amount, consumed FROM payments_table WHERE UPI_Ref_No = %s", (upi_ref_no,))
+                payment_details = cursor.fetchone()
 
-            # Check UPI reference number in the payments_table
-            cursor.execute("SELECT amount, consumed FROM payments_table WHERE UPI_Ref_No = %s", (upi_ref_no,))
-            payment_details = cursor.fetchone()
+                if not payment_details:
+                    return "Error: Invalid UPI reference number."
 
-            if not payment_details:
-                return "Error: Invalid UPI reference number."
+                if payment_details['amount'] != total_price:
+                    return "Error: Payment amount does not match the total bill amount. If the payment was successful then contact our helpdesk to proceed with the payment correction process."
 
-            if payment_details['amount'] != total_price:
-                return "Error: Payment amount does not match the total bill amount. If the payment was successful then contact our helpdesk to proceed with the payment correction process."
-
-            if payment_details['consumed'] == 1:
-                return "Error: UPI reference number has already been used. Please enter the UPI reference number of the current booking."
+                if payment_details['consumed'] == 1:
+                    return "Error: UPI reference number has already been used. Please enter the UPI reference number of the current booking."
 
             # Update the payment record to mark it as consumed
             cursor.execute("UPDATE payments_table SET consumed = 1 WHERE UPI_Ref_No = %s", (upi_ref_no,))
@@ -245,7 +327,8 @@ def confirm_booking():
                 'address': address,
                 'slot': slot,
                 'date': date,  # Add the selected date to bill details
-                'total_bill':total_amount
+                'total_bill':total_amount,
+                'total_duration':total_duration
             }
 
             for service_id in selected_services:
