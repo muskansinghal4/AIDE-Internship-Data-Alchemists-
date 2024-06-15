@@ -68,7 +68,7 @@ def logout():
 
 
 print("Am i even running")
-# @app.route('/')
+@app.route('/')
 @app.route('/homepage')
 def homepage():
     user = session.get('user')
@@ -204,7 +204,7 @@ if __name__ == '__main__':
     app.run(debug=True)
 
 
-@app.route('/')
+# @app.route('/')
 @app.route('/bookings')
 def booking():
 

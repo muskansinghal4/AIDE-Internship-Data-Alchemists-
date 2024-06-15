@@ -19,42 +19,57 @@
         }
     </style>
     <!-- Add the JavaScript part here -->
-<script>
-    var cities = {{ cities_list | tojson }};
-    var selectedServices = {{ selected_services | safe }};
-    var totalMinutes = {{ bill.total_minutes }};
+    <script>
+        var cities = {{ cities_list | tojson }};
+        var selectedServices = {{ selected_services | safe }};
+        var totalMinutes = {{ bill.total_minutes }};
 
-    function updateDetails() {
-        // Update service address
-        document.getElementById('display-address').innerText = document.getElementById('address').value;
+        function updateDetails() {
+            // Update service address
+            document.getElementById('display-address').innerText = document.getElementById('address').value;
 
-        // Update selected date and slot
-        var selectedDate = document.querySelector('input[name="date"]:checked').value;
-        var selectedSlot = document.querySelector('input[name="slot"]:checked').value.split(' - ')[0];
-        var slotHour = parseInt(selectedSlot.split(':')[0]);
+            // Update selected date
+            var selectedDate = document.querySelector('input[name="date"]:checked').value;
+            document.getElementById('display-date').innerText = selectedDate;
 
-        var endSlotHour = slotHour + Math.ceil(totalMinutes / 60);
-        var endSlot = endSlotHour + ":00";
+            // Update selected slot
+            var selectedSlot = document.querySelector('input[name="slot"]:checked').value.split(' - ')[0];
+            var slotHour = parseInt(selectedSlot.split(':')[0]);
 
-        var displaySlot = selectedSlot + " - " + endSlot;
-        document.getElementById('display-slot').innerText = displaySlot;
-        document.getElementById('preferred-slot').value = displaySlot;
-    }
+            var endSlotHour = slotHour + Math.ceil(totalMinutes / 60);
+            var endSlot = endSlotHour + ":00";
 
-    function validateAddress() {
-        var address = document.getElementById('address').value.toLowerCase();
-
-        for (var i = 0; i < cities.length; i++) {
-            if (address.includes(cities[i].toLowerCase())) {
-                return true;  // Valid address
-            }
+            var displaySlot = selectedSlot + " - " + endSlot;
+            document.getElementById('display-slot').innerText = displaySlot;
+            document.getElementById('preferred-slot').value = displaySlot;
         }
 
-        alert("Please enter a valid address within our service area.");
-        return false;  // Invalid address
-    }
-</script>
+        function validateAddress() {
+            var address = document.getElementById('address').value.toLowerCase();
 
+            for (var i = 0; i < cities.length; i++) {
+                if (address.includes(cities[i].toLowerCase())) {
+                    return true;  // Valid address
+                }
+            }
+
+            alert("Please enter a valid address within our service area.");
+            return false;  // Invalid address
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            var dateInputs = document.querySelectorAll('input[name="date"]');
+            var slotInputs = document.querySelectorAll('input[name="slot"]');
+
+            dateInputs.forEach(function (input) {
+                input.addEventListener('change', updateDetails);
+            });
+
+            slotInputs.forEach(function (input) {
+                input.addEventListener('change', updateDetails);
+            });
+        });
+    </script>
 </head>
 <body>
     <div class="container mt-5">
@@ -99,7 +114,7 @@
                 <input type="hidden" name="preferred_slot" id="preferred-slot">
                 <button type="submit" class="btn btn-primary">Confirm Booking</button>
             </form>
-        </div>        
+        </div>
         <div class="right">
             <h1 class="text-center">Booking Details</h1>
             <div class="card mt-4">
