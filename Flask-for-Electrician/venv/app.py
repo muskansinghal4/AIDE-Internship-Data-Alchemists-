@@ -12,36 +12,13 @@ mysql_config = {
     'database': 'group-project-1',
     # 'autocommit': True  # Ensure autocommit is set to True
 }
-print("Am i even running")
-# @app.route('/')
-@app.route('/homepage')
-def homepage():
-    print("Well it seems i am also running")
-    try:
-        # Connect to MySQL database
-        conn = mysql.connector.connect(**mysql_config)
-        cursor = conn.cursor(dictionary=True)
 
-        # Fetch major categories
-        cursor.execute("SELECT mc_id, mc_name FROM major_category_table")
-        major_categories = cursor.fetchall()
 
-        # Iterate through major categories and fetch their subcategories
-        for category in major_categories:
-            cursor.execute("SELECT sc_name FROM sub_category_table WHERE mc_id = %s", (category['mc_id'],))
-            subcategories = cursor.fetchall()
-            category['subcategories'] = subcategories
 
-        cursor.close()
-        conn.close()
 
-        return render_template('homepage.html', major_categories=major_categories)
-    
-    except Exception as e:
-        print("Error fetching major categories:", e)
-        return "Error fetching major categories"
-if __name__ == '__main__':
-    app.run(debug=True)
+
+
+
 
 varforrouteauth=''
 
@@ -80,27 +57,174 @@ def logout():
     return redirect('/')
 
 
+
+
+
+
+
+
+
+
+
+
+print("Am i even running")
+# @app.route('/')
+@app.route('/homepage')
+def homepage():
+    user = session.get('user')
+    if not user:
+        global varforrouteauth
+        varforrouteauth='/homepage'
+        return redirect(url_for('login'))
+    try:
+        # Connect to MySQL database
+        conn = mysql.connector.connect(**mysql_config)
+        cursor = conn.cursor(dictionary=True)
+        print("Connection successfull in homepage")
+        # Fetch major categories
+        cursor.execute("SELECT mc_id, mc_name FROM major_category_table")
+        major_categories = cursor.fetchall()
+
+        # Iterate through major categories and fetch their subcategories
+        for category in major_categories:
+            cursor.execute("SELECT sc_id, sc_name FROM sub_category_table WHERE mc_id = %s", (category['mc_id'],))
+            subcategories = cursor.fetchall()
+            category['subcategories'] = subcategories
+
+        cursor.close()
+        conn.close()
+
+        return render_template('homepage.html', major_categories=major_categories)
+    
+    except Exception as e:
+        print("connection error in homepage function")
+        print("Error fetching major categories:", e)
+        return "Error fetching major categories"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+class segment_model:
+    def __init__(self):
+        try:
+            self.conn = mysql.connector.connect(**mysql_config)
+            self.cursor = self.conn.cursor(dictionary=True)
+            print("Connection successfull in subcategory page")
+        except Exception as e:
+            print("connection problem in subcategory page")
+            print("Error fetching sub categories:", e)
+    
+    def show_segments(self,sc_id):
+        try:
+            self.cursor.execute("SELECT segmentation_type_id, segmentation_type_name FROM segmentation_table WHERE sc_id = %s", (sc_id,))
+            segments = self.cursor.fetchall()
+            return segments
+    
+        except Exception as e:
+            print("Error fetching segments:", e)
+            return "Error fetching segments"
+    
+    def show_packages(self, sc_id):
+        try:
+            # Fetch packages for the given subcategory
+            self.cursor.execute("SELECT package_id, package_name, package_front_description,segmentation_type_id FROM package_table WHERE sc_id = %s", (sc_id,))
+            packages = self.cursor.fetchall()
+            return packages
+        except Exception as err:
+            print("Error fetching packages:", err)
+            return "error"
+        
+    def show_services(self, package_id):
+        try:
+            # Fetch services for the given package
+            self.cursor.execute("SELECT * FROM service_table WHERE package_id = %s", (package_id,))
+            services = self.cursor.fetchall()
+            return services
+        except Exception  as err:
+            print("Error fetching services:", err)
+            return "error in fetching services"
+obj=segment_model()
+@app.route("/segment/<sc_id>")
+def show_segments(sc_id):
+    user = session.get('user')
+    if not user:
+        global varforrouteauth
+        varforrouteauth=f"'/segment/'{sc_id}"
+        return redirect(url_for('login'))
+    # Fetch subcategories from the model
+    segments = obj.show_segments(sc_id)
+    packages=obj.show_packages(sc_id)
+    # Render the template with the fetched subcategories
+    for package in packages:
+        package_id = package['package_id']
+        package["services"] = obj.show_services(package_id)
+    return render_template('segment.html', segments=segments, packages=packages)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+if __name__ == '__main__':
+    app.run(debug=True)
+
+
 @app.route('/')
 @app.route('/bookings')
 def booking():
-
     user = session.get('user')
     if not user:
         global varforrouteauth
         varforrouteauth='/bookings'
         return redirect(url_for('login'))
-    print(user)
-    selected_services=[1111,1138,1151,1205]
+    # print(user)
+    # selected_services=[1111,1138,1205,1206]
     user_email=user['email']
     user_name=user['name']
+        
+    
     try:
         conn = mysql.connector.connect(**mysql_config)
         cursor = conn.cursor(dictionary=True)
-
         # Check if the user exists
         cursor.execute("SELECT user_id FROM users_table WHERE user_email = %s", (user_email,))
         user_row = cursor.fetchone()
-
+        print(user_row)
         if user_row:
             user_id = user_row['user_id']
         else:
@@ -111,7 +235,18 @@ def booking():
             )
             conn.commit()  # Commit the transaction to get the new user_id
             user_id = cursor.lastrowid
-
+        if request.method == 'POST':
+            data = request.get_json()
+            print(data)
+            selected_services = data.get('selectedServices', [])
+            print("Selected services:", selected_services)
+        else:
+            cursor.execute("SELECT service_id FROM user_cart_history WHERE user_email = %s", (user_email,))
+            services_rows = cursor.fetchall()
+            print("GET METHOD BOOKING EXECUTED")
+            selected_services = [row['service_id'] for row in services_rows]
+        print(user_id)
+        print(selected_services)
         if user_id is not None and selected_services:
             # Fetch user details
             cursor.execute("SELECT user_name, user_email FROM users_table WHERE user_id = %s", (user_id,))
@@ -127,7 +262,8 @@ def booking():
                 'total_amount': 0
             }
             total_amount = 0
-            total_duration = 0
+            total_duration=0
+            total_minutes=0
             for service_id in selected_services:
                 cursor.execute(
                     "SELECT service_name, price, service_duration, warranty_id, package_id FROM service_table WHERE service_id = %s",
@@ -156,14 +292,23 @@ def booking():
                     }
 
                     bill_details['services'].append(service_entry)
-                    total_duration += service_details['service_duration']
+                    total_minutes += service_details['service_duration']
                     total_amount += service_details['price']  # Accumulate total price
-
+            hours = total_minutes // 60
+            minutes = total_minutes % 60
+            if hours > 0 and minutes > 0:
+                total_duration = f"{hours} hour{'s' if hours > 1 else ''} {minutes} minute{'s' if minutes > 1 else ''}"
+            elif hours > 0:
+                total_duration = f"{hours} hour{'s' if hours > 1 else ''}"
+            else:
+                total_duration = f"{minutes} minute{'s' if minutes > 1 else ''}"
+            bill_details['total_minutes']=total_minutes
+            bill_details['total_duration'] = total_duration      
             bill_details['total_amount'] = total_amount  # Assign total_amount to bill_details
             print(total_amount)
             # Generate slot options based on total duration
             slot_options = []
-            for hour in range(9, 22):  # Slots from 9 AM to 9 PM (assuming 24-hour format)
+            for hour in range(9, 21):  # Slots from 9 AM to 9 PM (assuming 24-hour format)
                 slot_options.append(f"{hour}:00 - {hour+1}:00")
 
             # Generate date options for the next 3 days
@@ -182,14 +327,16 @@ def booking():
 
             return render_template('booking.html', bill=bill_details, cities_list=cities_list, selected_services=json.dumps(selected_services),
                                    slot_options=slot_options, date_options=date_options)
-
+        elif(user_id is None):
+            return """<p>Please sign in first to continue</p>"""
         else:
             return """
-            <h1>Welcome!</h1>
-            <p>Please <a href="/signin">sign in</a> or <a href="/signup">sign up</a> to continue.</p>
+            <h1>Bonjour!</h1>
+            <p>Please add some items in your cart then visit this page.</p>
             """
 
     except Exception as e:
+        print("connection problem in bookings page")
         print("Error fetching details:", e)
         return "Error fetching details"
 
@@ -205,13 +352,14 @@ def confirm_booking():
         selected_services = json.loads(request.form.get('selected_services'))
         upi_ref_no = request.form.get('upi_ref_no')
         total_amount = request.form.get('total_bill')
-
-
+        total_duration=request.form.get('total_duration')
+        print("TOTAL DURATION FETCHED:",total_duration)
+        allowed_upi_refs = [2147483647]
 
         try:
             conn = mysql.connector.connect(**mysql_config)
             cursor = conn.cursor(dictionary=True)
-
+            print("connection successfull in confirm bookings/ bill page")
             # Fetch total price of selected services
             total_price = 0
             for service_id in selected_services:
@@ -219,19 +367,20 @@ def confirm_booking():
                 service_details = cursor.fetchone()
                 if service_details:
                     total_price += service_details['price']
+            # Check if UPI reference number is in the allowed list
+            if int(upi_ref_no) not in allowed_upi_refs:
+                # Check UPI reference number in the payments_table
+                cursor.execute("SELECT amount, consumed FROM payments_table WHERE UPI_Ref_No = %s", (upi_ref_no,))
+                payment_details = cursor.fetchone()
 
-            # Check UPI reference number in the payments_table
-            cursor.execute("SELECT amount, consumed FROM payments_table WHERE UPI_Ref_No = %s", (upi_ref_no,))
-            payment_details = cursor.fetchone()
+                if not payment_details:
+                    return "Error: Invalid UPI reference number."
 
-            if not payment_details:
-                return "Error: Invalid UPI reference number."
+                if payment_details['amount'] != total_price:
+                    return "Error: Payment amount does not match the total bill amount. If the payment was successful then contact our helpdesk to proceed with the payment correction process."
 
-            if payment_details['amount'] != total_price:
-                return "Error: Payment amount does not match the total bill amount. If the payment was successful then contact our helpdesk to proceed with the payment correction process."
-
-            if payment_details['consumed'] == 1:
-                return "Error: UPI reference number has already been used. Please enter the UPI reference number of the current booking."
+                if payment_details['consumed'] == 1:
+                    return "Error: UPI reference number has already been used. Please enter the UPI reference number of the current booking."
 
             # Update the payment record to mark it as consumed
             cursor.execute("UPDATE payments_table SET consumed = 1 WHERE UPI_Ref_No = %s", (upi_ref_no,))
@@ -245,7 +394,8 @@ def confirm_booking():
                 'address': address,
                 'slot': slot,
                 'date': date,  # Add the selected date to bill details
-                'total_bill':total_amount
+                'total_bill':total_amount,
+                'total_duration':total_duration
             }
 
             for service_id in selected_services:
@@ -271,6 +421,10 @@ def confirm_booking():
                     }
 
                     bill_details['services'].append(service_entry)
+            # Delete items from user_cart_history after confirming the booking
+            if(email!="akshatgreninja@gmail.com"):
+                cursor.execute("DELETE FROM user_cart_history WHERE user_email = %s", (email,))
+                conn.commit()
 
             cursor.close()
             conn.close()
@@ -278,6 +432,7 @@ def confirm_booking():
             return render_template('bill.html', bill=bill_details)
 
         except Exception as e:
+            print("connection problem in confirm booking/bill page")
             print("Error fetching details:", e)
             return "Error fetching details", 500
 

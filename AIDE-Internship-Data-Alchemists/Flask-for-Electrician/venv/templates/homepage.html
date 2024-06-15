@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Homepage</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        /* Optional: Add your custom styles here */
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <h1>Welcome to Our Website!</h1>
+
+        <div class="mb-4">
+            <h3>Major Categories and Subcategories:</h3>
+            <ul>
+                {% for category in major_categories %}
+                    <li>
+                        {{ category['mc_name'] }}
+                        <ul class="subcategory-list">
+                            {% for subcategory in category['subcategories'] %}
+                                <li>{{ subcategory['sc_name'] }}</li>
+                            {% endfor %}
+                        </ul>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</body>
+</html>

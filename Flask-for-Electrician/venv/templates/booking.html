@@ -18,34 +18,57 @@
             margin-left: 40px;
         }
     </style>
+    <!-- Add the JavaScript part here -->
     <script>
         var cities = {{ cities_list | tojson }};
         var selectedServices = {{ selected_services | safe }};
-        
+        var totalMinutes = {{ bill.total_minutes }};
+
         function updateDetails() {
             // Update service address
             document.getElementById('display-address').innerText = document.getElementById('address').value;
 
-            // Update selected date and slot
+            // Update selected date
             var selectedDate = document.querySelector('input[name="date"]:checked').value;
-            var selectedSlot = document.querySelector('input[name="slot"]:checked').value;
             document.getElementById('display-date').innerText = selectedDate;
-            document.getElementById('display-slot').innerText = selectedSlot;
 
+            // Update selected slot
+            var selectedSlot = document.querySelector('input[name="slot"]:checked').value.split(' - ')[0];
+            var slotHour = parseInt(selectedSlot.split(':')[0]);
+
+            var endSlotHour = slotHour + Math.ceil(totalMinutes / 60);
+            var endSlot = endSlotHour + ":00";
+
+            var displaySlot = selectedSlot + " - " + endSlot;
+            document.getElementById('display-slot').innerText = displaySlot;
+            document.getElementById('preferred-slot').value = displaySlot;
         }
-    
+
         function validateAddress() {
             var address = document.getElementById('address').value.toLowerCase();
-    
+
             for (var i = 0; i < cities.length; i++) {
                 if (address.includes(cities[i].toLowerCase())) {
                     return true;  // Valid address
                 }
             }
-    
+
             alert("Please enter a valid address within our service area.");
             return false;  // Invalid address
         }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            var dateInputs = document.querySelectorAll('input[name="date"]');
+            var slotInputs = document.querySelectorAll('input[name="slot"]');
+
+            dateInputs.forEach(function (input) {
+                input.addEventListener('change', updateDetails);
+            });
+
+            slotInputs.forEach(function (input) {
+                input.addEventListener('change', updateDetails);
+            });
+        });
     </script>
 </head>
 <body>
@@ -87,9 +110,11 @@
                 <input type="hidden" name="name" value="{{ bill.name }}">
                 <input type="hidden" name="email" value="{{ bill.email }}">
                 <input type="hidden" name="total_bill" value="{{ bill.total_amount }}">
+                <input type="hidden" name="total_duration" value="{{ bill.total_duration }}">
+                <input type="hidden" name="preferred_slot" id="preferred-slot">
                 <button type="submit" class="btn btn-primary">Confirm Booking</button>
             </form>
-        </div>        
+        </div>
         <div class="right">
             <h1 class="text-center">Booking Details</h1>
             <div class="card mt-4">
@@ -139,8 +164,9 @@
                 <div class="card-body">
                     <p><strong>Selected Date:</strong> <span id="display-date"></span></p>
                     <p><strong>Preferred Slot:</strong> <span id="display-slot"></span></p>
+                    <p><strong>Total Duration: </strong><span id="total_duration">{{ bill.total_duration }}</span></p>
                     <p><strong>Service Address:</strong> <span id="display-address"></span></p>
-                    <p><strong>Total Bill:</strong> Rs. <span id="total_bill">{{ bill.total_amount }}</span></p>
+                    <p><strong>Total Bill:</strong> Rs.<span id="total_bill">{{ bill.total_amount }}</span></p>
                 </div>
             </div>
         </div>
