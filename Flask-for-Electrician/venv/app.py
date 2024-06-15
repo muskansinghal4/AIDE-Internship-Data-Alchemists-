@@ -68,7 +68,7 @@ def logout():
 
 
 print("Am i even running")
-@app.route('/')
+# @app.route('/')
 @app.route('/homepage')
 def homepage():
     user = session.get('user')
@@ -204,28 +204,27 @@ if __name__ == '__main__':
     app.run(debug=True)
 
 
-# @app.route('/')
+@app.route('/')
 @app.route('/bookings')
 def booking():
-
     user = session.get('user')
     if not user:
         global varforrouteauth
         varforrouteauth='/bookings'
         return redirect(url_for('login'))
     # print(user)
-    selected_services=[1111,1138,1205,1206]
-    print("hello i modified this file")
+    # selected_services=[1111,1138,1205,1206]
     user_email=user['email']
     user_name=user['name']
+        
+    
     try:
         conn = mysql.connector.connect(**mysql_config)
         cursor = conn.cursor(dictionary=True)
-        print("connection successfull in bookings")
         # Check if the user exists
         cursor.execute("SELECT user_id FROM users_table WHERE user_email = %s", (user_email,))
         user_row = cursor.fetchone()
-
+        print(user_row)
         if user_row:
             user_id = user_row['user_id']
         else:
@@ -236,7 +235,18 @@ def booking():
             )
             conn.commit()  # Commit the transaction to get the new user_id
             user_id = cursor.lastrowid
-
+        if request.method == 'POST':
+            data = request.get_json()
+            print(data)
+            selected_services = data.get('selectedServices', [])
+            print("Selected services:", selected_services)
+        else:
+            cursor.execute("SELECT service_id FROM user_cart_history WHERE user_email = %s", (user_email,))
+            services_rows = cursor.fetchall()
+            print("GET METHOD BOOKING EXECUTED")
+            selected_services = [row['service_id'] for row in services_rows]
+        print(user_id)
+        print(selected_services)
         if user_id is not None and selected_services:
             # Fetch user details
             cursor.execute("SELECT user_name, user_email FROM users_table WHERE user_id = %s", (user_id,))
@@ -317,11 +327,12 @@ def booking():
 
             return render_template('booking.html', bill=bill_details, cities_list=cities_list, selected_services=json.dumps(selected_services),
                                    slot_options=slot_options, date_options=date_options)
-
+        elif(user_id is None):
+            return """<p>Please sign in first to continue</p>"""
         else:
             return """
-            <h1>Welcome!</h1>
-            <p>Please <a href="/signin">sign in</a> or <a href="/signup">sign up</a> to continue.</p>
+            <h1>Bonjour!</h1>
+            <p>Please add some items in your cart then visit this page.</p>
             """
 
     except Exception as e:
@@ -410,6 +421,10 @@ def confirm_booking():
                     }
 
                     bill_details['services'].append(service_entry)
+            # Delete items from user_cart_history after confirming the booking
+            if(email!="akshatgreninja@gmail.com"):
+                cursor.execute("DELETE FROM user_cart_history WHERE user_email = %s", (email,))
+                conn.commit()
 
             cursor.close()
             conn.close()
