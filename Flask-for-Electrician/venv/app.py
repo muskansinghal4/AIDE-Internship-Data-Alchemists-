@@ -215,6 +215,7 @@ def booking():
         return redirect(url_for('login'))
     # print(user)
     selected_services=[1111,1138,1205,1206]
+    print("hello i modified this file")
     user_email=user['email']
     user_name=user['name']
     try:
