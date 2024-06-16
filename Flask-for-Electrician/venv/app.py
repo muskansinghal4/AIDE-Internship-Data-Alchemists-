@@ -474,11 +474,14 @@ def confirm_booking():
                 'total_bill':total_amount,
                 'total_duration':total_duration
             }
-            quantity=quantitylist
-            for service_id in selected_services:
-                cursor.execute("SELECT service_name, price, service_duration, warranty_id, package_id FROM service_table WHERE service_id = %s", (service_id,))
+            quantities=quantitylist
+            for index, service_id in enumerate(selected_services):
+                quantity = quantities[index]
+                cursor.execute(
+                    "SELECT service_name, price, service_duration, warranty_id, package_id FROM service_table WHERE service_id = %s",
+                    (service_id,)
+                )
                 service_details = cursor.fetchone()
-
                 if service_details:
                     service_name = service_details['service_name']
                     
@@ -488,14 +491,15 @@ def confirm_booking():
                         (service_details['warranty_id'],)
                     )
                     warranty_details = cursor.fetchone()
-                    warranty_days = warranty_details['warranty_duration'] if warranty_details else None            
+                    warranty_days = warranty_details['warranty_duration'] if warranty_details else None
+                    quantitylist.append(quantity)            
                     service_entry = {
                         'name': service_name,
-                        'price': service_details['price'] * quantity[0],  # Multiply price by quantity
-                        'duration': service_details['service_duration'] * quantity[0],  # Multiply duration by quantity
+                        'price': service_details['price'] * quantity,  # Multiply price by quantity
+                        'duration': service_details['service_duration'] * quantity,  # Multiply duration by quantity
                         'warranty_days': warranty_days,
-                        'quantity': quantity[0],  # Include quantity in service_entry
-                        'total': service_details['price'] * quantity[0]
+                        'quantity': quantity,  # Include quantity in service_entry
+                        'total': service_details['price'] * quantity
                     }
 
                     bill_details['services'].append(service_entry)
