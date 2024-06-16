@@ -227,42 +227,38 @@
         {% endfor %}
     </ul>
 
-    <!-- Summary form -->
+    <!-- Summary and submit form -->
     <div id="summaryForm" style="display:none;">
-        <h3>Summary</h3>
-        <div id="summaryList"></div>
-        <p id="totalAmount">Total Amount: ₹0.00</p>
-        <button type="button" onclick="submitSelection()">Proceed to Booking</button>
+        <form id="serviceForm">
+            <div id="summaryList"></div>
+            <div id="totalAmount"></div>
+            <button type="button" id="doneBtn" onclick="submitSelection()">Done</button>
+        </form>
     </div>
 
-    <!-- Total quantity and price section -->
-    <div id="quantityTotalSection" style="display:none;">
-        <p id="totalQuantity">Total Quantity: 0</p>
-        <p id="totalPrice">Total Price: ₹0.00</p>
-    </div>
-    
     <script>
         var selectedServices = {};
-
+    
         // Toggle quantity selector visibility
         function toggleQuantitySelector(button, serviceId, servicePrice, serviceName) {
             var quantityControls = button.nextElementSibling;
             quantityControls.style.display = "inline-block";
             button.style.display = "none";
-
+    
             // Initialize quantity to 1 if not already in selectedServices
             if (!selectedServices[serviceId]) {
                 selectedServices[serviceId] = {
-                    service_id: serviceId,
+                    service_id:serviceId,
                     price: parseFloat(servicePrice),
                     quantity: 1,
                     name: serviceName
                 };
             }
-
+    
+            //updateTotal();
             showSummaryForm();
         }
-
+    
         // Function to increment service quantity
         function incrementQuantity(button) {
             var quantityElement = button.previousElementSibling;
@@ -270,7 +266,7 @@
             quantityElement.textContent = quantity + 1;
             updateQuantity(button);
         }
-
+    
         // Function to decrement service quantity
         function decrementQuantity(button) {
             var quantityElement = button.nextElementSibling;
@@ -280,7 +276,7 @@
                 updateQuantity(button);
             }
         }
-
+    
         // Function to update quantity in selectedServices
         function updateQuantity(button) {
             var quantityElement = button.parentElement.querySelector(".quantity");
@@ -289,33 +285,34 @@
             updateTotal();
             showSummaryForm();
         }
-
+    
         // Function to update total quantity and price
         function updateTotal() {
-            var totalQuantity = 0;
-            var totalPrice = 0;
+    var totalQuantity = 0;
+    var totalPrice = 0;
 
-            for (var serviceId in selectedServices) {
-                totalQuantity += selectedServices[serviceId].quantity;
-                totalPrice += selectedServices[serviceId].price * selectedServices[serviceId].quantity;
-            }
+    for (var serviceId in selectedServices) {
+        totalQuantity += selectedServices[serviceId].quantity;
+        totalPrice += selectedServices[serviceId].price * selectedServices[serviceId].quantity;
+    }
 
-            var totalQuantityElement = document.getElementById("totalQuantity");
-            if (totalQuantityElement) {
-                totalQuantityElement.textContent = "Total Quantity: " + totalQuantity;
-            }
+    var totalQuantityElement = document.getElementById("totalQuantity");
+    if (totalQuantityElement) {
+        totalQuantityElement.textContent = "Total Quantity: " + totalQuantity;
+    }
 
-            var totalPriceElement = document.getElementById("totalPrice");
-            if (totalPriceElement) {
-                totalPriceElement.textContent = "Total Price: ₹" + totalPrice.toFixed(2);
-            }
+    var totalPriceElement = document.getElementById("totalPrice");
+    if (totalPriceElement) {
+        totalPriceElement.textContent = "Total Price: ₹" + totalPrice.toFixed(2);
+    }
 
-            var quantityTotalSection = document.getElementById("quantityTotalSection");
-            if (quantityTotalSection) {
-                quantityTotalSection.style.display = "block";
-            }
-        }
+    var quantityTotalSection = document.getElementById("quantityTotalSection");
+    if (quantityTotalSection) {
+        quantityTotalSection.style.display = "block";
+    }
+}
 
+    
         // Function to show summary form
         function showSummaryForm() {
             var summaryList = document.getElementById("summaryList");
@@ -328,7 +325,7 @@
             totalAmount.textContent = "Total Amount: ₹" + calculateTotalAmount().toFixed(2);
             document.getElementById("summaryForm").style.display = "block";
         }
-
+    
         // Function to calculate total amount
         function calculateTotalAmount() {
             var totalAmount = 0;
@@ -338,25 +335,22 @@
             }
             return totalAmount;
         }
-
+    
         // Function to submit selection
         function submitSelection() {
-            console.log(selectedServices);
-            // Perform AJAX POST request to /bookings
-            fetch('/bookings', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ selectedServices: selectedServices }),
-            })
-            .then(response => response.json())
-            .then(data => {
-                // Handle response as needed
-                console.log('Response from server:', data);
-                // Optionally redirect or update UI based on response
-            })
-            .catch(error => console.error('Error submitting selection:', error));
+            var xhr = new XMLHttpRequest();
+            xhr.open("POST", "/save_cart", true);
+            xhr.setRequestHeader("Content-Type", "application/json");
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState === 4 && xhr.status === 200) {
+                    alert("Selection saved successfully!");
+                    window.location.href = "/bookings";
+                    // Optionally, clear the selection or redirect the user
+                    // selectedServices = {}; // Clear selected services
+                    // location.reload(); // Reload the page to reset the form
+                }
+            };
+            xhr.send(JSON.stringify({ services: selectedServices }));
         }
     </script>
 </body>

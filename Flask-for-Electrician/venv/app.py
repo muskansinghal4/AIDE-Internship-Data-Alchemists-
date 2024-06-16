@@ -51,12 +51,6 @@ def auth():
     print("user authorized")
     return redirect(varforrouteauth)
 
-@app.route('/logout')
-def logout():
-    session.pop('user', None)
-    return redirect('/')
-
-
 
 
 
@@ -68,7 +62,7 @@ def logout():
 
 
 print("Am i even running")
-# @app.route('/')
+@app.route('/')
 @app.route('/homepage')
 def homepage():
     user = session.get('user')
@@ -123,7 +117,8 @@ def homepage():
 
 
 
-class segment_model:
+
+class subcategory_model:
     def __init__(self):
         try:
             self.conn = mysql.connector.connect(**mysql_config)
@@ -162,27 +157,48 @@ class segment_model:
         except Exception  as err:
             print("Error fetching services:", err)
             return "error in fetching services"
-obj=segment_model()
-@app.route("/segment/<sc_id>")
-def show_segments(sc_id):
+        
+useremailsubcateg=""
+obj=subcategory_model()
+@app.route("/subcategory/<sc_id>")
+def show_subcategory(sc_id):
     user = session.get('user')
     if not user:
+        
         global varforrouteauth
-        varforrouteauth=f"'/segment/'{sc_id}"
+        varforrouteauth=f'/subcategory/{sc_id}'
         return redirect(url_for('login'))
     # Fetch subcategories from the model
+    global useremailsubcateg
+    useremailsubcateg=user['email']
+    print("USER FETCHED IN SUBCATEGORY LOGIN:\n",user)
     segments = obj.show_segments(sc_id)
     packages=obj.show_packages(sc_id)
     # Render the template with the fetched subcategories
     for package in packages:
         package_id = package['package_id']
         package["services"] = obj.show_services(package_id)
-    return render_template('segment.html', segments=segments, packages=packages)
+    return render_template('subcategory.html', segments=segments, packages=packages,subcategory_id=sc_id)
 
 
 
 
-
+@app.route('/save_cart', methods=['POST'])
+def save_cart():
+    data = request.json
+    services = data['services']
+    try:
+        conn = mysql.connector.connect(**mysql_config)
+        cursor = conn.cursor(dictionary=True)
+        for service_id, service_data in services.items():
+            cursor.execute('INSERT INTO user_cart_history (user_email,service_id, quantity) VALUES (%s, %s, %s)',(useremailsubcateg,service_id, service_data['quantity']))
+        conn.commit()
+        cursor.close()
+        return jsonify({"message": "Cart saved successfully"}), 200
+    except Exception as e:
+        print("connection problem in fetching cart history")
+        print("Error fetching details:", e)
+        return "Error fetching CART"
 
 
 
@@ -204,10 +220,11 @@ if __name__ == '__main__':
     app.run(debug=True)
 
 
-@app.route('/')
-@app.route('/bookings')
+# @app.route('/')
+@app.route('/bookings',methods=['POST','GET'])
 def booking():
     user = session.get('user')
+    print("\n\n\nREQUESTED METHOD BY:",request.method)
     if not user:
         global varforrouteauth
         varforrouteauth='/bookings'
@@ -224,7 +241,6 @@ def booking():
         # Check if the user exists
         cursor.execute("SELECT user_id FROM users_table WHERE user_email = %s", (user_email,))
         user_row = cursor.fetchone()
-        print(user_row)
         if user_row:
             user_id = user_row['user_id']
         else:
@@ -236,17 +252,23 @@ def booking():
             conn.commit()  # Commit the transaction to get the new user_id
             user_id = cursor.lastrowid
         if request.method == 'POST':
+            print("PROBLEM HERE 1")
             data = request.get_json()
             print(data)
+            
+            print("PROBLEM HERE 2")
             selected_services = data.get('selectedServices', [])
-            print("Selected services:", selected_services)
-        else:
+            print("\n\nPOST \nSelected services:", selected_services)
+            print("POST METHOD EXECUTED")
+
+        elif request.method == 'GET':
             cursor.execute("SELECT service_id FROM user_cart_history WHERE user_email = %s", (user_email,))
             services_rows = cursor.fetchall()
             print("GET METHOD BOOKING EXECUTED")
             selected_services = [row['service_id'] for row in services_rows]
-        print(user_id)
-        print(selected_services)
+            print("\n\nGET\nGET METHOD EXECUTED SERVICES:",selected_services)
+        print("FINAL:",user_id)
+        print("FINAL SELECTED SERVCIES:",selected_services)
         if user_id is not None and selected_services:
             # Fetch user details
             cursor.execute("SELECT user_name, user_email FROM users_table WHERE user_id = %s", (user_id,))
