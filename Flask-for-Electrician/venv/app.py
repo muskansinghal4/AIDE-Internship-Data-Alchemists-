@@ -171,15 +171,36 @@ def show_subcategory(sc_id):
     # Fetch subcategories from the model
     global useremailsubcateg
     useremailsubcateg=user['email']
-    print("USER FETCHED IN SUBCATEGORY LOGIN:\n",user)
-    segments = obj.show_segments(sc_id)
-    packages=obj.show_packages(sc_id)
-    # Render the template with the fetched subcategories
-    for package in packages:
-        package_id = package['package_id']
-        package["services"] = obj.show_services(package_id)
-    return render_template('subcategory.html', segments=segments, packages=packages,subcategory_id=sc_id)
+    user_name=user['name']
 
+    try:
+        conn = mysql.connector.connect(**mysql_config)
+        cursor = conn.cursor(dictionary=True)
+        # Check if the user exists
+        cursor.execute("SELECT user_id FROM users_table WHERE user_email = %s", (useremailsubcateg,))
+        user_row = cursor.fetchone()
+        if user_row:
+            user_id = user_row['user_id']
+        else:
+            # Insert new user into the users_table
+            cursor.execute(
+                "INSERT INTO users_table (user_name, user_email) VALUES (%s, %s)",
+                (user_name, useremailsubcateg)
+            )
+            conn.commit()  # Commit the transaction to get the new user_id
+
+        print("USER FETCHED IN SUBCATEGORY LOGIN:\n",user)
+        segments = obj.show_segments(sc_id)
+        packages=obj.show_packages(sc_id)
+        # Render the template with the fetched subcategories
+        for package in packages:
+            package_id = package['package_id']
+            package["services"] = obj.show_services(package_id)
+        return render_template('subcategory.html', segments=segments, packages=packages,subcategory_id=sc_id)
+    except Exception as e:
+        print("connection problem in subcategory page")
+        print("Error :", e)
+        return "Error fetching details"
 
 
 
@@ -267,6 +288,8 @@ def booking():
             print("GET METHOD BOOKING EXECUTED")
             selected_services = [row['service_id'] for row in services_rows]
             print("\n\nGET\nGET METHOD EXECUTED SERVICES:",selected_services)
+
+            
         print("FINAL:",user_id)
         print("FINAL SELECTED SERVCIES:",selected_services)
         if user_id is not None and selected_services:
