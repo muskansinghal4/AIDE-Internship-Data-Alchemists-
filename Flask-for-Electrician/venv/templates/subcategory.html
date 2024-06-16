@@ -1,0 +1,357 @@
+<!doctype html>
+<html>
+<head>
+    <title>Segments, Packages, and Services</title>
+    <style>
+        /* Your existing CSS styles here */
+        
+        /* Modal styles */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        li {
+            background: #fff;
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        strong {
+            display: block;
+            font-size: 1.2em;
+            margin-bottom: 5px;
+            color: #007BFF;
+        }
+
+        .package {
+            margin-left: 20px;
+        }
+
+        .package li {
+            background: #f9f9f9;
+            margin: 5px 0;
+            padding: 10px;
+            border-radius: 3px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+
+        .service {
+            margin-left: 40px;
+        }
+
+        .service li {
+            background: #eee;
+            margin: 3px 0;
+            padding: 8px;
+            border-radius: 2px;
+            box-shadow: 0 1px 1px rgba(0,0,0,0.05);
+        }
+
+        .service-details {
+            margin-top: 5px;
+            font-size: 0.9em;
+            color: #555;
+        }
+
+        .service-details span {
+            display: inline-block;
+            margin-right: 10px;
+        }
+
+        .service-name {
+            font-weight: bold;
+            color: #333;
+        }
+
+        .service-price {
+            color: #28a745;
+            font-weight: bold;
+        }
+
+        .service-duration {
+            color: #6c757d;
+        }
+        .modal {
+            display: none; /* Hidden by default */
+            position: fixed; /* Stay in place */
+            z-index: 1; /* Sit on top */
+            left: 0;
+            top: 0;
+            width: 100%; /* Full width */
+            height: 100%; /* Full height */
+            overflow: auto; /* Enable scroll if needed */
+            background-color: rgba(0,0,0,0.4); /* Black with opacity */
+        }
+
+        /* Modal content */
+        .modal-content {
+            background-color: #fefefe;
+            margin: 15% auto; /* 15% from the top and centered */
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%; /* Could be more or less, depending on screen size */
+            border-radius: 5px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        /* Close button */
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+        .close:hover,
+        .close:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        /* Submit button */
+        #doneBtn {
+            background-color: #007BFF;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+
+        #doneBtn:hover {
+            background-color: #0056b3;
+        }
+
+        /* Form input fields */
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        input[type="text"],
+        input[type="number"] {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+
+        .quantity-controls {
+            display: inline-block;
+        }
+
+        .quantity-btn {
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            padding: 5px 10px;
+            cursor: pointer;
+        }
+
+        .quantity {
+            margin: 0 10px;
+        }
+
+        #totalPrice {
+            margin-top: 10px;
+            font-weight: bold;
+        }
+        
+        #summaryForm {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background-color: #fefefe;
+            padding: 20px;
+            border-top: 1px solid #ccc;
+        }
+    </style>
+</head>
+<body>
+    <h1>Segments, Packages, and Services</h1>
+
+    <ul>
+        {% for segment in segments %}
+            <li>
+                <strong>{{ segment.segmentation_type_name }}</strong>
+                <ul class="package">
+                    {% for package in packages if package.segmentation_type_id == segment.segmentation_type_id %}
+                        <li>
+                            <strong>{{ package.package_name }}</strong><br>
+                            {{ package.package_front_description }}
+                            <ul class="service" id="service-list-{{ package.package_id }}">
+                                {% for service in package.services if service.package_id == package.package_id %}
+                                <li>
+                                    <div class="service-name">{{ service.service_name }}</div>
+                                    <div class="service-details">
+                                        <span class="service-price">₹{{ service.price }}</span>
+                                        <span class="service-duration">{{ service.service_duration }} minutes</span>
+                                    </div>
+                                    <div class="service-controls">
+                                        <button onclick="toggleQuantitySelector(this, '{{ service.service_id }}', '{{ service.price }}', '{{ service.service_name }}')">Add</button>
+                                        <div class="quantity-controls" style="display:none;">
+                                            <button type="button" class="quantity-btn" onclick="decrementQuantity(this)">-</button>
+                                            <span class="quantity" data-service-id="{{ service.service_id }}">1</span>
+                                            <button type="button" class="quantity-btn" onclick="incrementQuantity(this)">+</button>
+                                        </div>
+                                    </div>
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </li>
+        {% endfor %}
+    </ul>
+
+    <!-- Summary and submit form -->
+    <div id="summaryForm" style="display:none;">
+        <form id="serviceForm">
+            <div id="summaryList"></div>
+            <div id="totalAmount"></div>
+            <button type="button" id="doneBtn" onclick="submitSelection()">Done</button>
+        </form>
+    </div>
+
+    <script>
+        var selectedServices = {};
+    
+        // Toggle quantity selector visibility
+        function toggleQuantitySelector(button, serviceId, servicePrice, serviceName) {
+            var quantityControls = button.nextElementSibling;
+            quantityControls.style.display = "inline-block";
+            button.style.display = "none";
+    
+            // Initialize quantity to 1 if not already in selectedServices
+            if (!selectedServices[serviceId]) {
+                selectedServices[serviceId] = {
+                    service_id:serviceId,
+                    price: parseFloat(servicePrice),
+                    quantity: 1,
+                    name: serviceName
+                };
+            }
+    
+            //updateTotal();
+            showSummaryForm();
+        }
+    
+        // Function to increment service quantity
+        function incrementQuantity(button) {
+            var quantityElement = button.previousElementSibling;
+            var quantity = parseInt(quantityElement.textContent);
+            quantityElement.textContent = quantity + 1;
+            updateQuantity(button);
+        }
+    
+        // Function to decrement service quantity
+        function decrementQuantity(button) {
+            var quantityElement = button.nextElementSibling;
+            var quantity = parseInt(quantityElement.textContent);
+            if (quantity > 1) {
+                quantityElement.textContent = quantity - 1;
+                updateQuantity(button);
+            }
+        }
+    
+        // Function to update quantity in selectedServices
+        function updateQuantity(button) {
+            var quantityElement = button.parentElement.querySelector(".quantity");
+            var serviceId = quantityElement.dataset.serviceId;
+            selectedServices[serviceId].quantity = parseInt(quantityElement.textContent);
+            updateTotal();
+            showSummaryForm();
+        }
+    
+        // Function to update total quantity and price
+        function updateTotal() {
+    var totalQuantity = 0;
+    var totalPrice = 0;
+
+    for (var serviceId in selectedServices) {
+        totalQuantity += selectedServices[serviceId].quantity;
+        totalPrice += selectedServices[serviceId].price * selectedServices[serviceId].quantity;
+    }
+
+    var totalQuantityElement = document.getElementById("totalQuantity");
+    if (totalQuantityElement) {
+        totalQuantityElement.textContent = "Total Quantity: " + totalQuantity;
+    }
+
+    var totalPriceElement = document.getElementById("totalPrice");
+    if (totalPriceElement) {
+        totalPriceElement.textContent = "Total Price: ₹" + totalPrice.toFixed(2);
+    }
+
+    var quantityTotalSection = document.getElementById("quantityTotalSection");
+    if (quantityTotalSection) {
+        quantityTotalSection.style.display = "block";
+    }
+}
+
+    
+        // Function to show summary form
+        function showSummaryForm() {
+            var summaryList = document.getElementById("summaryList");
+            var totalAmount = document.getElementById("totalAmount");
+            summaryList.innerHTML = '';
+            for (var serviceId in selectedServices) {
+                var service = selectedServices[serviceId];
+                summaryList.innerHTML += "<div>" + service.name + " x " + service.quantity + " - ₹" + (service.price * service.quantity).toFixed(2) + "</div>";
+            }
+            totalAmount.textContent = "Total Amount: ₹" + calculateTotalAmount().toFixed(2);
+            document.getElementById("summaryForm").style.display = "block";
+        }
+    
+        // Function to calculate total amount
+        function calculateTotalAmount() {
+            var totalAmount = 0;
+            for (var serviceId in selectedServices) {
+                var service = selectedServices[serviceId];
+                totalAmount += service.price * service.quantity;
+            }
+            return totalAmount;
+        }
+    
+        // Function to submit selection
+        function submitSelection() {
+            var xhr = new XMLHttpRequest();
+            xhr.open("POST", "/save_cart", true);
+            xhr.setRequestHeader("Content-Type", "application/json");
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState === 4 && xhr.status === 200) {
+                    alert("Selection saved successfully!");
+                    window.location.href = "/bookings";
+                    // Optionally, clear the selection or redirect the user
+                    // selectedServices = {}; // Clear selected services
+                    // location.reload(); // Reload the page to reset the form
+                }
+            };
+            xhr.send(JSON.stringify({ services: selectedServices }));
+        }
+    </script>
+</body>
+</html>

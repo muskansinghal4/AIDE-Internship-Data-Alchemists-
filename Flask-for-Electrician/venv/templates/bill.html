@@ -5,6 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Booking Confirmation</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            if (sessionStorage.getItem("bookingRefreshed")) {
+                // If the page has been refreshed, redirect to homepage
+                window.location.href = "/homepage";
+            } else {
+                // Set the flag in sessionStorage
+                sessionStorage.setItem("bookingRefreshed", "true");
+            }
+        });
+    </script>
 </head>
 <body>
     <div class="container mt-5">
@@ -29,8 +40,10 @@
                             <tr>
                                 <th>Service Name</th>
                                 <th>Price</th>
-                                <th>Duration</th>
-                                <th>Warranty ID</th>
+                                <th>Quantity</th>
+                                <th>Total</th>
+                                <th>Duration(min)</th>
+                                <th>Warranty Days</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -38,8 +51,10 @@
                                 <tr>
                                     <td>{{ service.name }}</td>
                                     <td>{{ service.price }}</td>
+                                    <td>{{ service.quantity }}</td>
+                                    <td>{{ service.total }}</td>
                                     <td>{{ service.duration }}</td>
-                                    <td>{{ service.warranty_id }}</td>
+                                    <td>{{ service.warranty_days }}</td>
                                 </tr>
                             {% endfor %}
                         </tbody>
@@ -56,7 +71,7 @@
             <div class="card-body">
                 <p><strong>Selected Date:</strong> {{ bill.date }}</p>
                 <p><strong>Preferred Slot:</strong> {{ bill.slot }}</p>
-                <p><strong>Total Duration:</strong> {{ bill.total_duration }}</p>
+                <p><strong>Total Duration(min):</strong> {{ bill.total_duration }}</p>
                 <p><strong>Service Address:</strong> {{ bill.address }}</p>
                 <p><strong>Total Bill:</strong> Rs. {{ bill.total_bill }}</p>
             </div>
