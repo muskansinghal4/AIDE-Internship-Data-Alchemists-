@@ -1,0 +1,7 @@
+warranty_id,warranty_name,warranty_duration,warranty_description
+11111111,"Basic Warranty",30,"Covers basic repairs and maintenance for 30 days on electrical appliances."
+11111112,"Standard Warranty",45,"Includes extended supoort and parts replacement for 45 days."
+11111113,"Premium Warranty",60,"Provides comprehensive coverage for 60 days."
+11111114,"Gold Warranty",90,"Includes priority services and free check-ups(in case of problem) for 90 days."
+11111115,"Platinum Warranty",120,"Includes free replacement of major parts for 120 days."
+11111116,"Diamond Warranty",180,"Includes free repairs and replacement of major parts for 180 days."
