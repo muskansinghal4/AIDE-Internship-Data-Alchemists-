@@ -189,6 +189,10 @@ def show_subcategory(sc_id):
             )
             conn.commit()  # Commit the transaction to get the new user_id
 
+        cursor.execute("DELETE FROM user_cart_history WHERE user_email = %s", (useremailsubcateg,))
+        conn.commit()
+
+
         print("USER FETCHED IN SUBCATEGORY LOGIN:\n",user)
         segments = obj.show_segments(sc_id)
         packages=obj.show_packages(sc_id)
@@ -231,7 +235,7 @@ def save_cart():
 
 
 
-
+quantitylist=[]
 
 
 
@@ -244,6 +248,7 @@ if __name__ == '__main__':
 # @app.route('/')
 @app.route('/bookings',methods=['POST','GET'])
 def booking():
+    global quantitylist
     user = session.get('user')
     print("\n\n\nREQUESTED METHOD BY:",request.method)
     if not user:
@@ -273,25 +278,30 @@ def booking():
             conn.commit()  # Commit the transaction to get the new user_id
             user_id = cursor.lastrowid
         if request.method == 'POST':
-            print("PROBLEM HERE 1")
             data = request.get_json()
-            print(data)
-            
-            print("PROBLEM HERE 2")
             selected_services = data.get('selectedServices', [])
             print("\n\nPOST \nSelected services:", selected_services)
             print("POST METHOD EXECUTED")
 
         elif request.method == 'GET':
-            cursor.execute("SELECT service_id FROM user_cart_history WHERE user_email = %s", (user_email,))
+            cursor.execute("SELECT service_id, quantity FROM user_cart_history WHERE user_email = %s", (user_email,))
             services_rows = cursor.fetchall()
             print("GET METHOD BOOKING EXECUTED")
-            selected_services = [row['service_id'] for row in services_rows]
-            print("\n\nGET\nGET METHOD EXECUTED SERVICES:",selected_services)
-
+            selected_services = []
+            quantities = []
             
+            for row in services_rows:
+                selected_services.append(row['service_id'])
+                quantities.append(row['quantity'])
+            
+            print("\n\nGET\nGET METHOD EXECUTED SERVICES:", selected_services)
+            print("Quantities:", quantities)
+
+
         print("FINAL:",user_id)
         print("FINAL SELECTED SERVCIES:",selected_services)
+        print("FINAL QUANTITY SERVCIES:",quantities)
+        
         if user_id is not None and selected_services:
             # Fetch user details
             cursor.execute("SELECT user_name, user_email FROM users_table WHERE user_id = %s", (user_id,))
@@ -309,36 +319,37 @@ def booking():
             total_amount = 0
             total_duration=0
             total_minutes=0
-            for service_id in selected_services:
+            for index, service_id in enumerate(selected_services):
+                quantity = quantities[index]
                 cursor.execute(
                     "SELECT service_name, price, service_duration, warranty_id, package_id FROM service_table WHERE service_id = %s",
                     (service_id,)
                 )
                 service_details = cursor.fetchone()
                 if service_details:
-                    if service_details['service_name'].lower() == 'package' and 'package_id' in service_details:
-                        cursor.execute(
-                            "SELECT package_name FROM package_table WHERE package_id = %s",
-                            (service_details['package_id'],)
-                        )
-                        package_details = cursor.fetchone()
-                        if package_details:
-                            service_name = package_details['package_name']
-                        else:
-                            service_name = "Package (ID: {})".format(service_details['package_id'])
-                    else:
-                        service_name = service_details['service_name']
-
+                    service_name = service_details['service_name']
+                    
+                    # Fetch warranty duration from warranty_table
+                    cursor.execute(
+                        "SELECT warranty_duration FROM warranty_table WHERE warranty_id = %s",
+                        (service_details['warranty_id'],)
+                    )
+                    warranty_details = cursor.fetchone()
+                    warranty_days = warranty_details['warranty_duration'] if warranty_details else None
+                    quantitylist.append(quantity)            
                     service_entry = {
                         'name': service_name,
-                        'price': service_details['price'],
-                        'duration': service_details['service_duration'],
-                        'warranty_id': service_details['warranty_id']
+                        'price': service_details['price'] * quantity,  # Multiply price by quantity
+                        'duration': service_details['service_duration'] * quantity,  # Multiply duration by quantity
+                        'warranty_days': warranty_days,
+                        'quantity': quantity,  # Include quantity in service_entry
+                        'total': service_details['price'] * quantity
                     }
 
                     bill_details['services'].append(service_entry)
-                    total_minutes += service_details['service_duration']
-                    total_amount += service_details['price']  # Accumulate total price
+
+                    total_minutes += service_details['service_duration'] * quantity  # Accumulate total duration
+                    total_amount += service_details['price'] * quantity  # Accumulate total price
             hours = total_minutes // 60
             minutes = total_minutes % 60
             if hours > 0 and minutes > 0:
@@ -405,6 +416,27 @@ def confirm_booking():
             conn = mysql.connector.connect(**mysql_config)
             cursor = conn.cursor(dictionary=True)
             print("connection successfull in confirm bookings/ bill page")
+            insert_booking_query = (
+                "INSERT INTO user_bookings (user_email, slot_date, slot_time, location, service_status) "
+                "VALUES (%s, %s, %s, %s, %s)"
+            )
+            cursor.execute(insert_booking_query, (email, date, slot, address, 'PENDING'))
+            conn.commit()
+            booking_id = cursor.lastrowid
+            print(booking_id)
+
+            insert_service_query = (
+                "INSERT INTO user_booked_services (booking_id, service_id, quantity) "
+                "VALUES (%s, %s, %s)"
+            )
+            global quantitylist
+            c=0
+            for service_id in selected_services:
+                # Assuming you have quantity stored somewhere (not shown in your current code
+                cursor.execute(insert_service_query, (booking_id, service_id, quantitylist[c]))
+                c+=1
+                conn.commit()
+            c=0
             # Fetch total price of selected services
             total_price = 0
             for service_id in selected_services:
@@ -442,27 +474,28 @@ def confirm_booking():
                 'total_bill':total_amount,
                 'total_duration':total_duration
             }
-
+            quantity=quantitylist
             for service_id in selected_services:
                 cursor.execute("SELECT service_name, price, service_duration, warranty_id, package_id FROM service_table WHERE service_id = %s", (service_id,))
                 service_details = cursor.fetchone()
 
                 if service_details:
-                    if service_details['service_name'].lower() == 'package' and 'package_id' in service_details:
-                        cursor.execute("SELECT package_name FROM package_table WHERE package_id = %s", (service_details['package_id'],))
-                        package_details = cursor.fetchone()
-                        if package_details:
-                            service_name = package_details['package_name']
-                        else:
-                            service_name = f"Package (ID: {service_details['package_id']})"
-                    else:
-                        service_name = service_details['service_name']
-
+                    service_name = service_details['service_name']
+                    
+                    # Fetch warranty duration from warranty_table
+                    cursor.execute(
+                        "SELECT warranty_duration FROM warranty_table WHERE warranty_id = %s",
+                        (service_details['warranty_id'],)
+                    )
+                    warranty_details = cursor.fetchone()
+                    warranty_days = warranty_details['warranty_duration'] if warranty_details else None            
                     service_entry = {
                         'name': service_name,
-                        'price': service_details['price'],
-                        'duration': service_details['service_duration'],
-                        'warranty_id': service_details['warranty_id']
+                        'price': service_details['price'] * quantity[0],  # Multiply price by quantity
+                        'duration': service_details['service_duration'] * quantity[0],  # Multiply duration by quantity
+                        'warranty_days': warranty_days,
+                        'quantity': quantity[0],  # Include quantity in service_entry
+                        'total': service_details['price'] * quantity[0]
                     }
 
                     bill_details['services'].append(service_entry)
